@@ -16,7 +16,6 @@ current_latitude = None
 selected_species = None
 
 
-
 def read_config():
     config = configparser.ConfigParser()
     config.read('config.ini')
@@ -88,6 +87,8 @@ def on_image_click(event):
         "image_name": os.path.basename(images[image_index]),
         "longitude": current_longitude,
         "latitude": current_latitude,
+        "img_size_x": original_img.width,
+        "img_size_y": original_img.height,
         "recorded_x": actual_x,
         "recorded_y": actual_y,
         "species": selected_species.get()  # Record the selected species
