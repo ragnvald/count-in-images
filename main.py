@@ -3,6 +3,7 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageTk, ExifTags
 import sqlite3
 import os
+import pandas as pd
 import configparser
 import geopandas as gpd
 from shapely.geometry import Point
@@ -77,6 +78,14 @@ def resize_image(event=None):
     if event.width > 0 and event.height > 0:
         update_image(images[image_index])
 
+
+def export_to_excel():
+    output_file = "tbl_registrations.xlsx"
+    df = pd.DataFrame(click_data)
+    df.to_excel(output_file, index=False)
+    print(f"Data exported to {output_file}")
+
+
 def on_image_click(event):
     # Calculate the actual coordinates on the original image
     ratio = min(MAX_IMAGE_SIZE / original_img.width, MAX_IMAGE_SIZE / original_img.height)
@@ -145,6 +154,13 @@ def update_image(image_path):
     update_details_panel(image_path)
 
 
+def delete_current_image_registrations():
+    global click_data, image_index
+    current_image = os.path.basename(images[image_index])
+    click_data = [entry for entry in click_data if entry['image_name'] != current_image]
+    update_image(images[image_index])  # Refresh the image to remove the dots
+
+
 def next_image():
     global image_index
     image_index += 1
@@ -182,8 +198,20 @@ def init_main_window():
     # Frame for navigation buttons
     nav_frame = ttk.Frame(image_frame)
     nav_frame.pack(side=tk.BOTTOM, fill=tk.X)
-    ttk.Button(nav_frame, text="Previous", command=prev_image).pack(side=tk.LEFT)
-    ttk.Button(nav_frame, text="Next", command=next_image).pack(side=tk.RIGHT)
+
+    # Frame for each button to allow centering
+    left_button_frame = ttk.Frame(nav_frame)
+    left_button_frame.pack(side=tk.LEFT, expand=True)
+    ttk.Button(left_button_frame, text="Previous", command=prev_image).pack(side=tk.LEFT)
+
+    center_button_frame = ttk.Frame(nav_frame)
+    center_button_frame.pack(side=tk.LEFT, expand=True)
+    ttk.Button(center_button_frame, text="Delete current image registrations", command=delete_current_image_registrations).pack()
+
+    right_button_frame = ttk.Frame(nav_frame)
+    right_button_frame.pack(side=tk.LEFT, expand=True)
+    ttk.Button(right_button_frame, text="Next", command=next_image).pack(side=tk.RIGHT)
+
 
     # Right frame for displaying details
     right_frame = ttk.Frame(main_frame, width=200)
@@ -200,6 +228,9 @@ def init_main_window():
     details_text = tk.StringVar()
     details_label = ttk.Label(right_frame, textvariable=details_text, justify=tk.LEFT)
     details_label.pack()
+
+    export_button = ttk.Button(right_frame, text="Export to Excel sheet", command=export_to_excel)
+    export_button.pack(side=tk.BOTTOM)
 
     # Load images and set the initial image
     images = load_images('data_in')
