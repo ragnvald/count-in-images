@@ -85,10 +85,16 @@ def resize_image(event=None):
 
 
 def export_to_excel():
-    output_file = "tbl_registrations.xlsx"
-    df = pd.DataFrame(click_data)
-    df.to_excel(output_file, index=False)
-    print(f"Data exported to {output_file}")
+    output_file = "data_out/tbl_registrations.xlsx"
+    if click_data:
+        try:
+            df = pd.DataFrame(click_data)
+            df.to_excel(output_file, index=False)
+            print(f"Data exported to {output_file}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+    else:
+        print("No data to export.")
 
 
 def on_image_click(event):
@@ -245,10 +251,10 @@ def init_main_window():
     details_label.pack()
 
     # Zoom buttons
-    zoom_in_button = ttk.Button(nav_frame, text="Bigger", command=zoom_in)
-    zoom_in_button.pack(side=tk.LEFT)
     zoom_out_button = ttk.Button(nav_frame, text="Smaller", command=zoom_out)
     zoom_out_button.pack(side=tk.LEFT)
+    zoom_in_button = ttk.Button(nav_frame, text="Bigger", command=zoom_in)
+    zoom_in_button.pack(side=tk.LEFT)
 
     export_button = ttk.Button(right_frame, text="Export to Excel sheet", command=export_to_excel)
     export_button.pack(side=tk.BOTTOM)
