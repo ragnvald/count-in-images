@@ -16,6 +16,11 @@ current_longitude = None
 current_latitude = None
 selected_species = None
 
+# Global variables for zoom level
+zoom_factor = 1.0
+min_zoom = 0.5
+max_zoom = 3.0
+
 
 def read_config():
     config = configparser.ConfigParser()
@@ -87,8 +92,8 @@ def export_to_excel():
 
 
 def on_image_click(event):
-    # Calculate the actual coordinates on the original image
-    ratio = min(MAX_IMAGE_SIZE / original_img.width, MAX_IMAGE_SIZE / original_img.height)
+    # Calculate the actual coordinates on the original image considering the zoom factor
+    ratio = min(MAX_IMAGE_SIZE / original_img.width, MAX_IMAGE_SIZE / original_img.height) * zoom_factor
     actual_x = int(event.x / ratio)
     actual_y = int(event.y / ratio)
     global click_data, selected_species
@@ -106,6 +111,7 @@ def on_image_click(event):
     update_image(images[image_index])
 
 
+
 def write_to_geopackage():
     output_file = "data_out/wildlife.gpkg"
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -119,34 +125,43 @@ def write_to_geopackage():
     else:
         print("No data to save.")
 
+def zoom_in():
+    global zoom_factor
+    if zoom_factor < max_zoom:
+        zoom_factor += 0.1
+        update_image(images[image_index])
+
+def zoom_out():
+    global zoom_factor
+    if zoom_factor > min_zoom:
+        zoom_factor -= 0.1
+        update_image(images[image_index])
 
 def update_image(image_path):
-    global current_longitude, current_latitude
+    global current_longitude, current_latitude, zoom_factor, original_img
     longitude, latitude = get_exif_data(image_path)
     current_longitude = longitude
     current_latitude = latitude
-    global original_img
     original_img = Image.open(image_path)
     img = original_img.copy()
 
-    # Calculate the resizing ratio and resize the image first
-    ratio = min(MAX_IMAGE_SIZE / img.width, MAX_IMAGE_SIZE / img.height)
-    new_width = int(img.width * ratio)
-    new_height = int(img.height * ratio)
+    # Adjust resizing ratio for zoom
+    ratio = min(MAX_IMAGE_SIZE / original_img.width, MAX_IMAGE_SIZE / original_img.height) * zoom_factor
+    new_width = int(original_img.width * ratio)
+    new_height = int(original_img.height * ratio)
     img = img.resize((new_width, new_height))
 
     draw = ImageDraw.Draw(img)
 
-    # Draw red dots for each registration on the resized image
+    # Adjust marker positions based on zoom
     for data in click_data:
         if data['image_name'] == os.path.basename(image_path):
-            dot_x = int(data['recorded_x'] * ratio)
-            dot_y = int(data['recorded_y'] * ratio)
-            line_length = 10  # Length of each line of the crosshair
-            # Horizontal line
-            draw.line([(dot_x - line_length, dot_y), (dot_x + line_length, dot_y)], fill='red', width=1)
-            # Vertical line
-            draw.line([(dot_x, dot_y - line_length), (dot_x, dot_y + line_length)], fill='red', width=1)
+            # Scale marker position by current zoom factor
+            marker_x = int(data['recorded_x'] * ratio)
+            marker_y = int(data['recorded_y'] * ratio)
+            line_length = 10  # Adjust as needed
+            draw.line([(marker_x - line_length, marker_y), (marker_x + line_length, marker_y)], fill='red', width=1)
+            draw.line([(marker_x, marker_y - line_length), (marker_x, marker_y + line_length)], fill='red', width=1)
 
     photo = ImageTk.PhotoImage(img)
     image_label.config(image=photo)
@@ -228,6 +243,12 @@ def init_main_window():
     details_text = tk.StringVar()
     details_label = ttk.Label(right_frame, textvariable=details_text, justify=tk.LEFT)
     details_label.pack()
+
+    # Zoom buttons
+    zoom_in_button = ttk.Button(nav_frame, text="Bigger", command=zoom_in)
+    zoom_in_button.pack(side=tk.LEFT)
+    zoom_out_button = ttk.Button(nav_frame, text="Smaller", command=zoom_out)
+    zoom_out_button.pack(side=tk.LEFT)
 
     export_button = ttk.Button(right_frame, text="Export to Excel sheet", command=export_to_excel)
     export_button.pack(side=tk.BOTTOM)
